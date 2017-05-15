@@ -1,5 +1,5 @@
 # blindshot
-VR shooter for Android
+VR shooter for Windows
 Created by Sergey Shamov, 2017.
 
 Video of a gameplay: https://www.youtube.com/edit?video_id=cVCIdkIfWnA

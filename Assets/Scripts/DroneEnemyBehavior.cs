@@ -17,8 +17,7 @@ public class DroneEnemyBehavior : MonoBehaviour
     public DroneEnemyBehavior drone;
 
     private NPCManager.EnumMoveAroundDirections m_moveDirection;
-    private Vector3 m_direction = Vector3.zero;
-    private float m_speed = 0;
+    private Vector3 m_direction = Vector3.zero;                     // Actual speed vector. Length is units/sec.
     private float m_flightLength = 0;
 
     private bool m_isActive;
@@ -46,8 +45,8 @@ public class DroneEnemyBehavior : MonoBehaviour
                     if (transform.position.y < 0)
                         Destroy(gameObject);
 
-                    m_direction.y -= .03f;
-                    m_speed += .05f;
+                    m_direction.y -= Time.deltaTime * 7;
+                    
                     if (UnityEngine.Random.Range(0, 10) == 0)
                     {
                         GameObject projectile = Instantiate(invisibleProjectilePrefab, transform.position + Vector3.down, transform.rotation);
@@ -56,39 +55,50 @@ public class DroneEnemyBehavior : MonoBehaviour
                 }
                 else
                 {
+                    // 1. Check flight order
                     if (m_flightLength > 0)
                         m_flightLength -= Time.deltaTime;
                     else
                     {
+                        // get new flight orders
                         var order = GameManager.GetInstance().GetNpcManager().GetDroneNpcNextMove();
                         m_flightLength = order.moveLength;
                         speed = order.speed;
                         m_moveDirection = order.direction;
                     }
 
-                    int directionMod = m_moveDirection == NPCManager.EnumMoveAroundDirections.Clockwise ? 1 : -1;
-                    m_speed = m_speed + acceleration * Time.deltaTime * directionMod;
-                    if (m_moveDirection == NPCManager.EnumMoveAroundDirections.Clockwise)
-                        m_speed = Math.Min(m_speed, speed);
-                    else
-                        m_speed = Math.Max(m_speed, -speed);
-
+                    // 2. Calculate direction
+                    Vector3 newDirection;
                     Vector3 playerDirection = player.position - transform.position;
-                    m_direction = new Vector3(-playerDirection.z, 0, playerDirection.x).normalized;
+                    int directionFactor = (m_moveDirection == NPCManager.EnumMoveAroundDirections.Clockwise) ? 1 : -1;
+                    newDirection = new Vector3(-directionFactor * playerDirection.z, 0, directionFactor * playerDirection.x);   // direction is a vector perpendicular to direction to the player
+                    newDirection = newDirection.normalized * speed;                                                             // desired direction vector
+                    Vector3 directionChangeVector = (newDirection - m_direction);                                               // to make drone seem inertial, calculate velocity difference vector
+                    float changeValue = directionChangeVector.sqrMagnitude;
+                    float maxChangeValue = acceleration * Time.deltaTime;
+                    if ((maxChangeValue * maxChangeValue) < changeValue)
+                        directionChangeVector = directionChangeVector.normalized * maxChangeValue;                              // direction change is limited to simulate inertia
 
-                    body.LookAt(player);
-                    body.Rotate(Vector3.forward, (20 * (m_speed / speed)));
+                    m_direction += directionChangeVector;
 
+                    // 3. Calculate drone orientation and roll
+                    transform.LookAt(player);
+                    // Roll is greater the greater the speed is. However, roll is limited to 20 degree.
+                    // Sometimes new order gives speed less than before, in such case roll remains 20.
+                    float angle = (20 * MyGetPortion(m_direction.sqrMagnitude, speed * speed) * (Vector3.Cross(m_direction, transform.forward).y > 0 ? 1 : -1));
+                    transform.Rotate(Vector3.forward, angle);
+
+                    // 4. Attack
                     if (UnityEngine.Random.Range(0, 1000) == 0)  //TODO: different attack randomization
                     {
-                        GameObject projectile = Instantiate(projectilePrefab, transform.position + body.forward * 2, body.rotation);
+                        GameObject projectile = Instantiate(projectilePrefab, transform.position + transform.forward * 2, body.rotation);
                         projectile.GetComponent<Rigidbody>().velocity = body.forward * 40;
                         projectile.GetComponent<LandNpcProjectileBehavior>().damage = damage;
 
                     }
                 }
 
-                transform.position += m_direction * m_speed * Time.deltaTime;
+                transform.position += m_direction * Time.deltaTime;
             }
         }
     }
@@ -104,5 +114,18 @@ public class DroneEnemyBehavior : MonoBehaviour
                 GameManager.GetInstance().AddPoints(rewardPoints);
             }
         }
+    }
+
+    /// <summary>
+    /// Returns portion of part in whole. If part is greater then whole, returns 1.
+    /// Portion is absolute.
+    /// </summary>
+    /// <param name="part">Value to measure.</param>
+    /// <param name="whole">Reference value.</param>
+    /// <returns>Returns portion of part in whole.</returns>
+    private float MyGetPortion(float part, float whole)
+    {
+        float portion = Math.Abs(part / whole);
+        return portion > 1 ? 1 : portion;
     }
 }

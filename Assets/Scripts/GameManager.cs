@@ -244,7 +244,8 @@ public class GameManager : MonoBehaviour
 
         m_points += amount;
 
-        GetProjectileManager().paintBombColor = projectileColors[(m_points / projectileColorChange) % m_projColorCount];
+        int colorId = (m_points / projectileColorChange) % m_projColorCount;
+        GetProjectileManager().paintBombColor = projectileColors[colorId < 0 ? 0 : colorId];
     }
 
     public int[] GetGameTimes()
@@ -255,7 +256,7 @@ public class GameManager : MonoBehaviour
     public void StartGame(int gameTimeId)
     {
         m_gameTimeId = gameTimeId;
-        m_timeLeft = c_gameTimes[m_gameTimeId] * 10;
+        m_timeLeft = c_gameTimes[m_gameTimeId] * 60;
         MyToPlaying();
     }
 
