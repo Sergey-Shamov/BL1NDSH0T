@@ -2,8 +2,8 @@
 VR shooter for Android
 Created by Sergey Shamov, 2017.
 
-Video of a gameplay: https://www.youtube.com/edit?video_id=cVCIdkIfWnA
-Developer's blog: http://codrspace.com/Sergey-Shamov/
+Video of a gameplay: https://www.youtube.com/watch?v=cVCIdkIfWnA
+Developer's blog: https://sergeyshamov.wordpress.com/
 
 Powered by Unity Engine.
 
